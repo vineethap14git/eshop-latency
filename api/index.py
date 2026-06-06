@@ -9,13 +9,22 @@ from pathlib import Path
 app = FastAPI()
 
 # Enable CORS
+from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["POST"],
+    allow_credentials=False,
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from fastapi import Response
+
+@app.options("/{rest_of_path:path}")
+async def options_handler(rest_of_path: str):
+    return Response(status_code=200)
+    
 
 # Load telemetry data
 DATA_FILE = Path(__file__).parent.parent / "q-vercel-latency.json"
