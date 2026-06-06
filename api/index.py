@@ -14,8 +14,9 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Access-Control-Allow-Origin"],
 )
-
+ 
 # Load telemetry data
 DATA_FILE = Path(__file__).parent.parent / "q-vercel-latency.json"
 
