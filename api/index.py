@@ -8,9 +8,7 @@ from pathlib import Path
 
 app = FastAPI()
 
-# Enable CORS
-from fastapi.middleware.cors import CORSMiddleware
-
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,13 +16,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from fastapi import Response
-
-@app.options("/{rest_of_path:path}")
-async def options_handler(rest_of_path: str):
-    return Response(status_code=200)
-    
 
 # Load telemetry data
 DATA_FILE = Path(__file__).parent.parent / "q-vercel-latency.json"
@@ -45,7 +36,7 @@ def home():
 
 @app.post("/")
 def get_metrics(request: RequestBody):
-    response = {}
+    result = {}
 
     for region in request.regions:
         records = [
@@ -54,7 +45,7 @@ def get_metrics(request: RequestBody):
         ]
 
         if not records:
-            response[region] = {
+            result[region] = {
                 "avg_latency": 0,
                 "p95_latency": 0,
                 "avg_uptime": 0,
@@ -65,7 +56,7 @@ def get_metrics(request: RequestBody):
         latencies = [r["latency_ms"] for r in records]
         uptimes = [r["uptime_pct"] for r in records]
 
-        response[region] = {
+        result[region] = {
             "avg_latency": round(sum(latencies) / len(latencies), 2),
             "p95_latency": round(float(np.percentile(latencies, 95)), 2),
             "avg_uptime": round(sum(uptimes) / len(uptimes), 3),
@@ -75,4 +66,4 @@ def get_metrics(request: RequestBody):
             )
         }
 
-    return response
+    return result
