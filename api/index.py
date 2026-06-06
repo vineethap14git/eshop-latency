@@ -8,17 +8,20 @@ from pathlib import Path
 
 app = FastAPI()
 
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["POST"],
     allow_headers=["*"],
 )
 
-DATA_FILE = Path(__file__).parent.parent / "telemetry.json"
+# Load telemetry data
+DATA_FILE = Path(__file__).parent.parent / "q-vercel-latency.json"
 
-with open(DATA_FILE, "r") as f:
-    telemetry = json.load(f)
+with open(DATA_FILE, "r", encoding="utf-8") as f:
+    telemetry_data = json.load(f)
 
 
 class RequestBody(BaseModel):
@@ -26,24 +29,41 @@ class RequestBody(BaseModel):
     threshold_ms: float
 
 
+@app.get("/")
+def home():
+    return {"message": "Latency Metrics API is running"}
+
+
 @app.post("/")
-def analyze(data: RequestBody):
-    result = {}
+def get_metrics(request: RequestBody):
+    response = {}
 
-    for region in data.regions:
-        rows = [r for r in telemetry if r["region"] == region]
+    for region in request.regions:
+        records = [
+            item for item in telemetry_data
+            if item["region"] == region
+        ]
 
-        latencies = [r["latency_ms"] for r in rows]
-        uptimes = [r["uptime_pct"] for r in rows]
+        if not records:
+            response[region] = {
+                "avg_latency": 0,
+                "p95_latency": 0,
+                "avg_uptime": 0,
+                "breaches": 0
+            }
+            continue
 
-        result[region] = {
+        latencies = [r["latency_ms"] for r in records]
+        uptimes = [r["uptime_pct"] for r in records]
+
+        response[region] = {
             "avg_latency": round(sum(latencies) / len(latencies), 2),
             "p95_latency": round(float(np.percentile(latencies, 95)), 2),
             "avg_uptime": round(sum(uptimes) / len(uptimes), 3),
             "breaches": sum(
-                1 for x in latencies
-                if x > data.threshold_ms
+                1 for latency in latencies
+                if latency > request.threshold_ms
             )
         }
 
-    return result
+    return response
